@@ -14,8 +14,10 @@ class Elasticsearch::Model::SearchingTest < Test::Unit::TestCase
       DummySearchingModel.stubs(:client).returns(@client)
     end
 
-    should "have the search method" do
-      assert_respond_to DummySearchingModel, :search
+    should 'have the search and scroll method' do
+      [:search, :scroll].each do |method|
+        assert_respond_to DummySearchingModel, method
+      end
     end
 
     should "initialize the search object" do
@@ -36,6 +38,16 @@ class Elasticsearch::Model::SearchingTest < Test::Unit::TestCase
         .expects(:new).returns( mock('search').expects(:execute!).never )
 
       DummySearchingModel.search 'foo'
+    end
+
+    scroll_id = 'cXVlcnlUaGVuRmV0Y2g7NTs2ODA6RXhhbXBsZQ=='
+
+    should 'initializes a ScrollRequest object' do
+      Elasticsearch::Model::Searching::ScrollRequest.expects(:new)
+        .with(DummySearchingModel, scroll_id, scroll: '5m')
+        .returns(mock('scroll'))
+
+      DummySearchingModel.scroll(scroll_id, scroll: '5m')
     end
   end
 end
