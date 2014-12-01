@@ -52,6 +52,34 @@ module Elasticsearch
         end
       end
 
+      # Wraps a scroll request definition
+      #
+      class ScrollRequest
+        attr_reader :klass, :definition
+
+        # @param klass [Class] The class of the model
+        # @param scroll_id [String] Scroll ID
+        # @param options [Hash] Optional parameters to be passed to the Elasticsearch client
+        #
+        def initialize(klass, scroll_id, options={})
+          @klass = klass
+
+          @definition = {
+            index: options[:index] || klass.index_name,
+            type: options[:type] || klass.document_type,
+            scroll_id: scroll_id
+          }.update(options)
+        end
+
+        # Performs the request and returns the response from client
+        #
+        # @return [Hash] The response from Elasticsearch
+        #
+        def execute!
+          klass.client.scroll(@definition)
+        end
+      end
+
       module ClassMethods
 
         # Provides a `search` method for the model to easily search within an index/type
@@ -102,8 +130,24 @@ module Elasticsearch
           Response::Response.new(self, search)
         end
 
-      end
+        # Provides a `scroll` method for the model to easily scroll within an index/type
+        # corresponding to the model settings.
+        #
+        # @param scroll_id [String] Scroll ID
+        # @param options [Hash] Optional parameters to be passed to the Elasticsearch client
+        #
+        # @return [Elasticsearch::Model::Response::Response]
+        #
+        # @example Simple scroll in `Article`
+        #
+        #     Article.scroll('cXVlcnlUaGVuRmV0Y2g7NTs2ODA6RXhhbXBsZQ==', scroll: '5m')
+        #
+        def scroll(scroll_id, options = {})
+          search = ScrollRequest.new(self, scroll_id, options)
 
+          Response::Response.new(self, search)
+        end
+      end
     end
   end
 end
