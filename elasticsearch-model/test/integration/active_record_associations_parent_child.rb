@@ -1,6 +1,11 @@
 require 'test_helper'
 require 'active_record'
 
+# Needed for ActiveRecord 3.x ?
+ActiveRecord::Base.establish_connection( :adapter => 'sqlite3', :database => ":memory:" ) unless ActiveRecord::Base.connected?
+
+::ActiveRecord::Base.raise_in_transactional_callbacks = true if ::ActiveRecord::Base.respond_to?(:raise_in_transactional_callbacks) && ::ActiveRecord::VERSION::MAJOR.to_s < '5'
+
 class Question < ActiveRecord::Base
   include Elasticsearch::Model
 
@@ -66,14 +71,17 @@ module Elasticsearch
               t.string     :title
               t.text       :text
               t.string     :author
-              t.timestamps
+              t.timestamps null: false
             end
+
             create_table :answers do |t|
               t.text       :text
               t.string     :author
               t.references :question
-              t.timestamps
-            end and add_index(:answers, :question_id)
+              t.timestamps null: false
+            end
+
+            add_index(:answers, :question_id) unless index_exists?(:answers, :question_id)
           end
 
           Question.delete_all

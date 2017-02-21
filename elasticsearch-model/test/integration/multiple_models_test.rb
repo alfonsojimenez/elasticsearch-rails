@@ -1,11 +1,40 @@
 require 'test_helper'
 require 'active_record'
 
+# Needed for ActiveRecord 3.x ?
+ActiveRecord::Base.establish_connection( :adapter => 'sqlite3', :database => ":memory:" ) unless ActiveRecord::Base.connected?
+
+::ActiveRecord::Base.raise_in_transactional_callbacks = true if ::ActiveRecord::Base.respond_to?(:raise_in_transactional_callbacks) && ::ActiveRecord::VERSION::MAJOR.to_s < '5'
+
 Mongo.setup!
 
 module Elasticsearch
   module Model
     class MultipleModelsIntegration < Elasticsearch::Test::IntegrationTestCase
+      module ::NameSearch
+        extend ActiveSupport::Concern
+
+        included do
+          include Elasticsearch::Model
+          include Elasticsearch::Model::Callbacks
+
+          settings index: {number_of_shards: 1, number_of_replicas: 0} do
+            mapping do
+              indexes :name, type: 'string', analyzer: 'snowball'
+              indexes :created_at, type: 'date'
+            end
+          end
+        end
+      end
+
+      class ::Episode < ActiveRecord::Base
+        include NameSearch
+      end
+
+      class ::Series < ActiveRecord::Base
+        include NameSearch
+      end
+
       context "Multiple models" do
         setup do
           ActiveRecord::Schema.define(:version => 1) do
@@ -20,30 +49,6 @@ module Elasticsearch
             end
           end
 
-          module ::NameSearch
-            extend ActiveSupport::Concern
-
-            included do
-              include Elasticsearch::Model
-              include Elasticsearch::Model::Callbacks
-
-              settings index: {number_of_shards: 1, number_of_replicas: 0} do
-                mapping do
-                  indexes :name, type: 'string', analyzer: 'snowball'
-                  indexes :created_at, type: 'date'
-                end
-              end
-            end
-          end
-
-          class ::Episode < ActiveRecord::Base
-            include NameSearch
-          end
-
-          class ::Series < ActiveRecord::Base
-            include NameSearch
-          end
-
           [::Episode, ::Series].each do |model|
             model.delete_all
             model.__elasticsearch__.create_index! force: true
@@ -52,7 +57,6 @@ module Elasticsearch
             model.create name: "The greatest #{model.name}"
             model.__elasticsearch__.refresh_index!
           end
-
         end
 
         should "find matching documents across multiple models" do
@@ -101,6 +105,14 @@ module Elasticsearch
 
           assert_equal 'The greatest Episode', response.results[0].name
           assert_equal 'The greatest Episode', response.records[0].name
+        end
+
+        should "paginate the results" do
+          response = Elasticsearch::Model.search('series OR episode', [Series, Episode])
+
+          assert_equal 3, response.page(1).per(3).results.size
+          assert_equal 3, response.page(2).per(3).results.size
+          assert_equal 0, response.page(3).per(3).results.size
         end
 
         if Mongo.available?

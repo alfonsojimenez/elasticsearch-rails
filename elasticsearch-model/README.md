@@ -229,7 +229,7 @@ response.records.records.class
 # => ActiveRecord::Relation::ActiveRecord_Relation_Article
 ```
 
-The ordering of the records by score will be preserved, unless you explicitely specify a different
+The ordering of the records by score will be preserved, unless you explicitly specify a different
 order in your model query language:
 
 ```ruby
@@ -290,7 +290,7 @@ response.page(2).results
 response.page(2).records
 ```
 
-In a Rails controller, use the the `params[:page]` parameter to paginate through results:
+In a Rails controller, use the `params[:page]` parameter to paginate through results:
 
 ```ruby
 @articles = Article.search(params[:q]).page(params[:page]).records
@@ -303,7 +303,7 @@ In a Rails controller, use the the `params[:page]` parameter to paginate through
 To initialize and include the Kaminari pagination support manually:
 
 ```ruby
-Kaminari::Hooks.init
+Kaminari::Hooks.init if defined?(Kaminari::Hooks)
 Elasticsearch::Model::Response::Response.__send__ :include, Elasticsearch::Model::Response::Pagination::Kaminari
 ```
 
@@ -320,8 +320,8 @@ response.results.first.highlight.title
 # ["Quick brown <em>fox</em>"]
 ```
 
-You can pass any object which implements a `to_hash` method, or you can use your favourite JSON builder
-to build the search definition as a JSON string:
+You can pass any object which implements a `to_hash` method, which is called automatically,
+so you can use a custom class or your favourite JSON builder to build the search definition:
 
 ```ruby
 require 'jbuilder'
@@ -332,6 +332,25 @@ query = Jbuilder.encode do |json|
       json.title do
         json.query "fox dogs"
       end
+    end
+  end
+end
+
+response = Article.search query
+response.results.first.title
+# => "Quick brown fox"
+```
+
+Also, you can use the [**`elasticsearch-dsl`**](https://github.com/elastic/elasticsearch-ruby/tree/master/elasticsearch-dsl) library, which provides a specialized Ruby API for
+the Elasticsearch Query DSL:
+
+```ruby
+require 'elasticsearch/dsl'
+
+query = Elasticsearch::DSL::Search.search do
+  query do
+    match :title do
+      query 'fox dogs'
     end
   end
 end
@@ -684,6 +703,18 @@ response.records.records.class
 
 More examples can be found in the `examples` folder. Please see the `Elasticsearch::Model::Adapter`
 module and its submodules for technical information.
+
+### Settings
+
+The module provides a common `settings` method to customize various features.
+
+At the moment, the only supported setting is `:inheritance_enabled`, which makes the class receiving the module
+respect index names and document types of a super-class, eg. in case you're using "single table inheritance" (STI)
+in Rails:
+
+```ruby
+Elasticsearch::Model.settings[:inheritance_enabled] = true
+```
 
 ## Development and Community
 

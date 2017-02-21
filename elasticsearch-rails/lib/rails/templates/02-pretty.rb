@@ -1,14 +1,17 @@
 # $ rails new searchapp --skip --skip-bundle --template https://raw.github.com/elasticsearch/elasticsearch-rails/master/elasticsearch-rails/lib/rails/templates/02-pretty.rb
 
-# (See: 01-basic.rb)
+unless File.read('README.md').include? '## [1] Basic'
+  say_status  "ERROR", "You have to run the 01-basic.rb template first.", :red
+  exit(1)
+end
 
 puts
 say_status  "README", "Updating Readme...\n", :yellow
 puts        '-'*80, ''; sleep 0.25
 
-append_to_file 'README.rdoc', <<-README
+append_to_file 'README.md', <<-README
 
-== [2] Pretty
+## [2] Pretty
 
 The `pretty` template builds on the `basic` version and brings couple of improvements:
 
@@ -19,7 +22,7 @@ The `pretty` template builds on the `basic` version and brings couple of improve
 
 README
 
-git add:    "README.rdoc"
+git add:    "README.md"
 git commit: "-m '[02] Updated the application README'"
 
 # ----- Update application.rb ---------------------------------------------------------------------
@@ -151,8 +154,8 @@ end
 
 # ----- Customize the header -----------------------------------------------------------------
 
-gsub_file 'app/views/articles/index.html.erb', %r{<h1>Listing articles</h1>} do |match|
-  "<h1><%= controller.action_name == 'search' ? 'Searching articles' : 'Listing articles' %></h1>"
+gsub_file 'app/views/articles/index.html.erb', %r{<h1>.*Articles</h1>} do |match|
+  "<h1><%= controller.action_name == 'search' ? 'Search results' : 'Articles' %></h1>"
 end
 
 # ----- Customize the results listing -------------------------------------------------------------

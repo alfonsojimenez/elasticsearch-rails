@@ -1,6 +1,6 @@
 require 'pathname'
 
-subprojects = %w| elasticsearch-model elasticsearch-rails elasticsearch-persistence |
+subprojects = %w| elasticsearch-rails elasticsearch-persistence elasticsearch-model |
 
 __current__ = Pathname( File.expand_path('..', __FILE__) )
 
@@ -23,9 +23,6 @@ task :bundle => 'bundle:install'
 namespace :bundle do
   desc "Run `bundle install` in all subprojects"
   task :install do
-    puts '-'*80
-    sh "bundle install --gemfile #{__current__}/Gemfile"
-    puts
     subprojects.each do |project|
       puts '-'*80
       sh "bundle install --gemfile #{__current__.join(project)}/Gemfile"
@@ -35,16 +32,18 @@ namespace :bundle do
     sh "bundle install --gemfile #{__current__.join('elasticsearch-model/gemfiles')}/3.0.gemfile"
     puts '-'*80
     sh "bundle install --gemfile #{__current__.join('elasticsearch-model/gemfiles')}/4.0.gemfile"
+    puts '-'*80
+    sh "bundle install --gemfile #{__current__.join('elasticsearch-model/gemfiles')}/5.0.gemfile"
   end
 
   desc "Remove Gemfile.lock in all subprojects"
   task :clean do
-    sh "rm -f Gemfile.lock"
     subprojects.each do |project|
       sh "rm -f #{__current__.join(project)}/Gemfile.lock"
     end
     sh "rm -f #{__current__.join('elasticsearch-model/gemfiles')}/3.0.gemfile.lock"
     sh "rm -f #{__current__.join('elasticsearch-model/gemfiles')}/4.0.gemfile.lock"
+    sh "rm -f #{__current__.join('elasticsearch-model/gemfiles')}/5.0.gemfile.lock"
   end
 end
 
@@ -53,7 +52,6 @@ namespace :test do
 
   desc "Run unit tests in all subprojects"
   task :unit do
-    Rake::Task['test:ci_reporter'].invoke if ENV['CI']
     subprojects.each do |project|
       puts '-'*80
       sh "cd #{__current__.join(project)} && unset BUNDLE_GEMFILE && bundle exec rake test:unit"
@@ -63,8 +61,6 @@ namespace :test do
 
   desc "Run integration tests in all subprojects"
   task :integration do
-    Rake::Task['test:ci_reporter'].invoke if ENV['CI']
-
     # 1/ elasticsearch-model
     #
     puts '-'*80
@@ -90,21 +86,8 @@ namespace :test do
 
   desc "Run all tests in all subprojects"
   task :all do
-    Rake::Task['test:ci_reporter'].invoke if ENV['CI']
-
     Rake::Task['test:unit'].invoke
     Rake::Task['test:integration'].invoke
-  end
-
-  task :ci_reporter do
-    ENV['CI_REPORTS'] ||= 'tmp/reports'
-    if defined?(RUBY_VERSION) && RUBY_VERSION < '1.9'
-      require 'ci/reporter/rake/test_unit'
-      Rake::Task['ci:setup:testunit'].invoke
-    else
-      require 'ci/reporter/rake/minitest'
-      Rake::Task['ci:setup:minitest'].invoke
-    end
   end
 
   namespace :cluster do

@@ -108,11 +108,12 @@ module Elasticsearch
               object.instance_variable_set :@_index,   document['_index']
               object.instance_variable_set :@_type,    document['_type']
               object.instance_variable_set :@_version, document['_version']
+              object.instance_variable_set :@_source,  document['_source']
 
               # Store the "hit" information (highlighting, score, ...)
               #
               object.instance_variable_set :@hit,
-                 Hashie::Mash.new(document.except('_index', '_type', '_id', '_version', '_source'))
+                 Elasticsearch::Model::HashWrapper.new(document.except('_index', '_type', '_id', '_version', '_source'))
 
               object.instance_variable_set(:@persisted, true)
               object
@@ -121,8 +122,8 @@ module Elasticsearch
 
           # Set up common attributes
           #
-          attribute :created_at, DateTime, default: lambda { |o,a| Time.now.utc }
-          attribute :updated_at, DateTime, default: lambda { |o,a| Time.now.utc }
+          attribute :created_at, Time, default: lambda { |o,a| Time.now.utc }
+          attribute :updated_at, Time, default: lambda { |o,a| Time.now.utc }
 
           attr_reader :hit
         end
